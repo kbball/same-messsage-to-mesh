@@ -1,5 +1,12 @@
 import { get, post, put } from './client'
-import type { SAMEAlert, EventCode, FIPSCode, AlertFilter, SDRDeviceConfig, MQTTConfig } from '../../domain/types'
+import type {
+  SAMEAlert,
+  EventCode,
+  FIPSCode,
+  AlertFilter,
+  SDRDeviceConfig,
+  MQTTConfig,
+} from '../../domain/types'
 
 export const api = {
   // Alerts

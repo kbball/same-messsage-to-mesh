@@ -15,7 +15,11 @@ describe('API client', () => {
 
     const result = await get<typeof mockData>('/api/test')
     expect(result).toEqual(mockData)
-    expect(fetch).toHaveBeenCalledWith('/api/test', { method: 'GET', headers: undefined, body: undefined })
+    expect(fetch).toHaveBeenCalledWith('/api/test', {
+      method: 'GET',
+      headers: undefined,
+      body: undefined,
+    })
   })
 
   it('post sends JSON body', async () => {

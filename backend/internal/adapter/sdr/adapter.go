@@ -72,7 +72,9 @@ func (a *Adapter) Start(ctx context.Context, ch chan<- entity.SAMEAlert) error {
 	}
 	if err := mmCmd.Start(); err != nil {
 		cancel()
-		_ = rtlCmd.Process.Kill()
+		if killErr := rtlCmd.Process.Kill(); killErr != nil {
+			slog.Error("failed to kill rtl_fm after multimon-ng start error", "error", killErr)
+		}
 		return fmt.Errorf("starting multimon-ng: %w", err)
 	}
 
@@ -81,8 +83,12 @@ func (a *Adapter) Start(ctx context.Context, ch chan<- entity.SAMEAlert) error {
 		if err := a.readOutput(mmOut, ch); err != nil && pipeCtx.Err() == nil {
 			slog.Error("SDR pipeline error", "error", err)
 		}
-		_ = rtlCmd.Wait()
-		_ = mmCmd.Wait()
+		if err := rtlCmd.Wait(); err != nil && pipeCtx.Err() == nil {
+			slog.Error("rtl_fm exited with error", "error", err)
+		}
+		if err := mmCmd.Wait(); err != nil && pipeCtx.Err() == nil {
+			slog.Error("multimon-ng exited with error", "error", err)
+		}
 	}()
 
 	slog.Info("SDR pipeline started",

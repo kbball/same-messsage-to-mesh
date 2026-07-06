@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pressly/goose/v3"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 
 	httphandler "github.com/kbball/same-message-to-mesh/backend/internal/adapter/http/handler"
 	mqttadapter "github.com/kbball/same-message-to-mesh/backend/internal/adapter/mqtt"

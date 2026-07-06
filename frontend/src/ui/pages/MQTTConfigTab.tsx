@@ -24,7 +24,10 @@ export default function MQTTConfigTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error' | 'warning'
+    text: string
+  } | null>(null)
 
   useEffect(() => {
     api
@@ -44,7 +47,12 @@ export default function MQTTConfigTab() {
     setSaving(true)
     setMessage(null)
     try {
-      const result = await api.updateMQTTConfig({ enabled, host, port, publish_topic: publishTopic })
+      const result = await api.updateMQTTConfig({
+        enabled,
+        host,
+        port,
+        publish_topic: publishTopic,
+      })
       if ('warning' in result) {
         setMessage({ type: 'warning', text: (result as { warning: string }).warning })
       } else {
@@ -79,8 +87,8 @@ export default function MQTTConfigTab() {
         MQTT Configuration
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Configure the MQTT broker for publishing decoded alerts to the mesh network.
-        Save changes to reconnect with the new settings.
+        Configure the MQTT broker for publishing decoded alerts to the mesh network. Save changes to
+        reconnect with the new settings.
       </Typography>
 
       {message && (

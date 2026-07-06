@@ -1,5 +1,12 @@
 import { http, HttpResponse } from 'msw'
-import type { SAMEAlert, AlertFilter, SDRDeviceConfig, EventCode, FIPSCode, MQTTConfig } from '../domain/types'
+import type {
+  SAMEAlert,
+  AlertFilter,
+  SDRDeviceConfig,
+  EventCode,
+  FIPSCode,
+  MQTTConfig,
+} from '../domain/types'
 
 const mockFilter: AlertFilter = {
   state_codes: [],
@@ -38,12 +45,30 @@ const mockAlerts: SAMEAlert[] = [
 ]
 
 const mockEventCodes: EventCode[] = [
-  { code: 'RWT', description: 'Required Weekly Test', category: 'Test', is_warning: false, updated_at: new Date().toISOString() },
-  { code: 'TOR', description: 'Tornado Warning', category: 'Warning', is_warning: true, updated_at: new Date().toISOString() },
+  {
+    code: 'RWT',
+    description: 'Required Weekly Test',
+    category: 'Test',
+    is_warning: false,
+    updated_at: new Date().toISOString(),
+  },
+  {
+    code: 'TOR',
+    description: 'Tornado Warning',
+    category: 'Warning',
+    is_warning: true,
+    updated_at: new Date().toISOString(),
+  },
 ]
 
 const mockStates: FIPSCode[] = [
-  { state_code: '13', county_code: '000', state_name: 'Georgia', county_name: '', updated_at: new Date().toISOString() },
+  {
+    state_code: '13',
+    county_code: '000',
+    state_name: 'Georgia',
+    county_name: '',
+    updated_at: new Date().toISOString(),
+  },
 ]
 
 export const handlers = [

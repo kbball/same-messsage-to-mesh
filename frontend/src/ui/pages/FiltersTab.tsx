@@ -60,7 +60,11 @@ export default function FiltersTab() {
 
   const loadData = useCallback(async () => {
     try {
-      const [f, s, ec] = await Promise.all([api.getFilter(), api.listStates(), api.listEventCodes()])
+      const [f, s, ec] = await Promise.all([
+        api.getFilter(),
+        api.listStates(),
+        api.listEventCodes(),
+      ])
       setStates(s)
       setEventCodes(ec)
       setSelectedStates(f.state_codes ?? [])
@@ -140,7 +144,9 @@ export default function FiltersTab() {
   }
 
   const availableStates = states.filter((s) => !selectedStates.includes(s.state_code))
-  const availableCounties = counties.filter((c) => !selectedFIPS.includes(c.state_code + c.county_code))
+  const availableCounties = counties.filter(
+    (c) => !selectedFIPS.includes(c.state_code + c.county_code),
+  )
   const availableEvents = eventCodes.filter((e) => !selectedEvents.includes(e.code))
 
   return (
@@ -175,7 +181,9 @@ export default function FiltersTab() {
             >
               {availableStates.length === 0 ? (
                 <MenuItem disabled>
-                  {states.length === 0 ? 'No states loaded — refresh Reference Data first' : 'All states selected'}
+                  {states.length === 0
+                    ? 'No states loaded — refresh Reference Data first'
+                    : 'All states selected'}
                 </MenuItem>
               ) : (
                 availableStates.map((s) => (
@@ -208,7 +216,10 @@ export default function FiltersTab() {
                   </MenuItem>
                 ) : (
                   availableCounties.map((c) => (
-                    <MenuItem key={c.state_code + c.county_code} value={c.state_code + c.county_code}>
+                    <MenuItem
+                      key={c.state_code + c.county_code}
+                      value={c.state_code + c.county_code}
+                    >
                       {c.county_name}
                     </MenuItem>
                   ))

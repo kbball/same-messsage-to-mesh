@@ -62,8 +62,8 @@ export default function SDRConfigTab() {
         SDR Configuration
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Configure the RTL-SDR device path and NOAA Weather Radio frequency. Changes take effect after
-        the server restarts.
+        Configure the RTL-SDR device path and NOAA Weather Radio frequency. Changes take effect
+        after the server restarts.
       </Typography>
 
       {message && (

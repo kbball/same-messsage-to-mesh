@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -17,7 +18,10 @@ type stubFilterRepo struct {
 }
 
 func (s *stubFilterRepo) Get(_ context.Context) (entity.AlertFilter, error) { return s.filter, nil }
-func (s *stubFilterRepo) Update(_ context.Context, _ entity.AlertFilter) error { return nil }
+func (s *stubFilterRepo) Update(_ context.Context, f entity.AlertFilter) error {
+	s.filter = f
+	return nil
+}
 
 // stubAlertRepo records created alerts.
 type stubAlertRepo struct {
@@ -138,34 +142,34 @@ func TestAlertService_MatchesFilter(t *testing.T) {
 			want:   true,
 		},
 		{
-			name:  "state match",
-			alert: entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
+			name:   "state match",
+			alert:  entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
 			filter: entity.AlertFilter{StateCodes: []string{"13"}},
-			want:  true,
+			want:   true,
 		},
 		{
-			name:  "state no match",
-			alert: entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
+			name:   "state no match",
+			alert:  entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
 			filter: entity.AlertFilter{StateCodes: []string{"12"}},
-			want:  false,
+			want:   false,
 		},
 		{
-			name:  "fips match",
-			alert: entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
+			name:   "fips match",
+			alert:  entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
 			filter: entity.AlertFilter{FIPSCodes: []string{"13121"}},
-			want:  true,
+			want:   true,
 		},
 		{
-			name:  "event code match",
-			alert: entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
+			name:   "event code match",
+			alert:  entity.SAMEAlert{EventCode: "TOR", FIPSCodes: []string{"013121"}},
 			filter: entity.AlertFilter{EventCodes: []string{"TOR"}},
-			want:  true,
+			want:   true,
 		},
 		{
-			name:  "event code no match",
-			alert: entity.SAMEAlert{EventCode: "RWT", FIPSCodes: []string{"013121"}},
+			name:   "event code no match",
+			alert:  entity.SAMEAlert{EventCode: "RWT", FIPSCodes: []string{"013121"}},
 			filter: entity.AlertFilter{EventCodes: []string{"TOR"}},
-			want:  false,
+			want:   false,
 		},
 	}
 
@@ -175,6 +179,79 @@ func TestAlertService_MatchesFilter(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+// stubPublisher records calls to Publish.
+type stubPublisher struct {
+	called  int
+	lastMsg string
+	err     error
+}
+
+func (p *stubPublisher) Publish(_ context.Context, _ entity.SAMEAlert, msg string) error {
+	p.called++
+	p.lastMsg = msg
+	return p.err
+}
+
+func TestAlertService_List(t *testing.T) {
+	alertRepo := &stubAlertRepo{}
+	svc := NewAlertService(alertRepo, &stubFilterRepo{}, &stubFIPSRepo{}, &stubECRepo{}, nil)
+
+	results, err := svc.List(context.Background(), 10)
+	require.NoError(t, err)
+	assert.Empty(t, results)
+
+	alertRepo.created = []entity.SAMEAlert{{ID: 1, EventCode: "TOR"}}
+	results, err = svc.List(context.Background(), 10)
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+}
+
+func TestAlertService_SetPublisher(t *testing.T) {
+	svc := NewAlertService(&stubAlertRepo{}, &stubFilterRepo{}, &stubFIPSRepo{}, &stubECRepo{}, nil)
+	assert.Nil(t, svc.publisher)
+	pub := &stubPublisher{}
+	svc.SetPublisher(pub)
+	assert.Equal(t, pub, svc.publisher)
+}
+
+func TestAlertService_Handle_WithPublisher(t *testing.T) {
+	alertRepo := &stubAlertRepo{}
+	pub := &stubPublisher{}
+	svc := NewAlertService(alertRepo, &stubFilterRepo{}, &stubFIPSRepo{}, &stubECRepo{}, pub)
+
+	saved, err := svc.Handle(context.Background(), entity.SAMEAlert{
+		EventCode: "TOR", FIPSCodes: []string{"013121"},
+	})
+	require.NoError(t, err)
+	assert.True(t, saved.Published)
+	assert.Equal(t, 1, pub.called)
+	assert.Contains(t, pub.lastMsg, "[TOR]")
+}
+
+func TestAlertService_Handle_PublishError(t *testing.T) {
+	alertRepo := &stubAlertRepo{}
+	pub := &stubPublisher{err: errors.New("broker down")}
+	svc := NewAlertService(alertRepo, &stubFilterRepo{}, &stubFIPSRepo{}, &stubECRepo{}, pub)
+
+	saved, err := svc.Handle(context.Background(), entity.SAMEAlert{
+		EventCode: "TOR", FIPSCodes: []string{"013121"},
+	})
+	require.NoError(t, err)
+	assert.False(t, saved.Published) // publish failed, should not be marked
+	assert.Len(t, alertRepo.created, 1)
+}
+
+func TestIsStateWideCode(t *testing.T) {
+	assert.True(t, isStateWideCode("13000"))
+	assert.False(t, isStateWideCode("13121"))
+	assert.False(t, isStateWideCode("13"))
+}
+
+func TestStripFIPSPrefix(t *testing.T) {
+	assert.Equal(t, "13121", stripFIPSPrefix("013121"))
+	assert.Equal(t, "13121", stripFIPSPrefix("13121")) // no-op for 5-char
 }
 
 func TestFormatMessage(t *testing.T) {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -17,6 +18,7 @@ func (h *Handler) listAlerts(w http.ResponseWriter, r *http.Request) {
 
 	alerts, err := h.alerts.List(r.Context(), limit)
 	if err != nil {
+		slog.Error("failed to list alerts", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to list alerts")
 		return
 	}

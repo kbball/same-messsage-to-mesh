@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/kbball/same-message-to-mesh/backend/internal/domain/entity"
@@ -12,6 +13,7 @@ import (
 func (h *Handler) getMQTTConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.filters.GetMQTTConfig(r.Context())
 	if err != nil {
+		slog.Error("failed to get MQTT config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to get MQTT config")
 		return
 	}
@@ -33,21 +35,23 @@ func (h *Handler) updateMQTTConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.filters.UpdateMQTTConfig(r.Context(), cfg); err != nil {
+		slog.Error("failed to update MQTT config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to update MQTT config")
 		return
 	}
-	// Reconnect the publisher with the new config.
+	// Reconnect the publisher with the new config. Non-fatal: config is saved even if reconnect fails.
 	if h.reconnectMQTT != nil {
 		if err := h.reconnectMQTT(cfg); err != nil {
-			// Non-fatal: config is saved, but warn the client.
+			slog.Warn("MQTT reconnect failed after config update", "error", err)
 			writeJSON(w, http.StatusOK, map[string]string{
-				"warning": "config saved but MQTT reconnect failed: " + err.Error(),
+				"warning": "config saved but MQTT reconnect failed",
 			})
 			return
 		}
 	}
 	updated, err := h.filters.GetMQTTConfig(r.Context())
 	if err != nil {
+		slog.Error("failed to read updated MQTT config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to read updated MQTT config")
 		return
 	}
@@ -62,6 +66,7 @@ func (h *Handler) testMQTTPublish(w http.ResponseWriter, r *http.Request) {
 	}
 	msg := "[TEST] SAME → Mesh connectivity check"
 	if err := pub.Publish(context.Background(), entity.SAMEAlert{}, msg); err != nil {
+		slog.Error("MQTT test publish failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "MQTT test publish failed: "+err.Error())
 		return
 	}

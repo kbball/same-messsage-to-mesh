@@ -3,6 +3,7 @@ package sse
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ func NewBroker() *Broker {
 func (b *Broker) Publish(eventType string, payload any) {
 	data, err := json.Marshal(envelope{Type: eventType, Payload: payload})
 	if err != nil {
+		slog.Error("failed to marshal SSE event", "event_type", eventType, "error", err)
 		return
 	}
 	msg := fmt.Sprintf("data: %s\n\n", data)
@@ -63,12 +65,15 @@ func (b *Broker) subscribe() (chan string, func()) {
 func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
+		slog.Error("SSE streaming not supported by response writer", "remote_addr", r.RemoteAddr)
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
 	rc := http.NewResponseController(w)
-	_ = rc.SetWriteDeadline(time.Time{})
+	if err := rc.SetWriteDeadline(time.Time{}); err != nil {
+		slog.Warn("failed to clear write deadline for SSE client", "remote_addr", r.RemoteAddr, "error", err)
+	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
