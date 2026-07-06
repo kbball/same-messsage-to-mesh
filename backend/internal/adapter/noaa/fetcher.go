@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	fipsURL       = "https://www.ncei.noaa.gov/erddap/convert/fipscounty.csv"
+	// Census Bureau national county file — pipe-delimited, very reliable.
+	// Columns: STATE|STATEFP|COUNTYFP|COUNTYNS|COUNTYNAME
+	fipsURL       = "https://www2.census.gov/geo/docs/reference/codes2020/national_county2020.txt"
 	eventCodesURL = "https://www.weather.gov/nwr/eventcodes"
 )
 
@@ -28,8 +30,8 @@ func New() *Fetcher {
 	}
 }
 
-// FetchFIPS downloads county FIPS codes from NOAA NCEI.
-// The ERDDAP CSV endpoint returns rows with FIPS code and county name.
+// FetchFIPS downloads county FIPS codes from the Census Bureau national county file.
+// Format: pipe-delimited with header STATE|STATEFP|COUNTYFP|COUNTYNS|COUNTYNAME
 func (f *Fetcher) FetchFIPS(ctx context.Context) ([]entity.FIPSCode, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fipsURL, nil)
 	if err != nil {
@@ -38,28 +40,27 @@ func (f *Fetcher) FetchFIPS(ctx context.Context) ([]entity.FIPSCode, error) {
 
 	resp, err := f.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetching FIPS CSV: %w", err)
+		return nil, fmt.Errorf("fetching FIPS data: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d from NOAA FIPS endpoint", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected status %d from Census FIPS endpoint", resp.StatusCode)
 	}
 
-	return parseFIPSCSV(resp.Body)
+	return parseFIPSPipe(resp.Body)
 }
 
-// parseFIPSCSV parses the NOAA NCEI FIPS county CSV.
-// Expected columns: FIPS (5-digit), Name (e.g. "Autauga County, Alabama")
-func parseFIPSCSV(r io.Reader) ([]entity.FIPSCode, error) {
+// parseFIPSPipe parses the Census Bureau national_county2020.txt pipe-delimited file.
+// Columns: STATE|STATEFP|COUNTYFP|COUNTYNS|COUNTYNAME
+func parseFIPSPipe(r io.Reader) ([]entity.FIPSCode, error) {
 	reader := csv.NewReader(r)
+	reader.Comma = '|'
 	reader.TrimLeadingSpace = true
-	// County names contain commas (e.g. "Autauga County, Alabama"), so allow variable fields.
-	reader.FieldsPerRecord = -1
 
-	// Skip header row
+	// Skip header
 	if _, err := reader.Read(); err != nil {
-		return nil, fmt.Errorf("reading CSV header: %w", err)
+		return nil, fmt.Errorf("reading header: %w", err)
 	}
 
 	now := time.Now()
@@ -70,24 +71,23 @@ func parseFIPSCSV(r io.Reader) ([]entity.FIPSCode, error) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("reading CSV row: %w", err)
+			return nil, fmt.Errorf("reading row: %w", err)
 		}
-		if len(record) < 2 {
+		// STATE|STATEFP|COUNTYFP|COUNTYNS|COUNTYNAME
+		if len(record) < 5 {
 			continue
 		}
-
-		fips := strings.TrimSpace(record[0])
-		if len(fips) != 5 {
+		stateCode := strings.TrimSpace(record[1])
+		countyCode := strings.TrimSpace(record[2])
+		countyName := strings.TrimSpace(record[4])
+		if len(stateCode) != 2 || len(countyCode) != 3 || countyName == "" {
 			continue
 		}
-
-		// Rejoin remaining fields to reconstruct "County Name, State Name"
-		name := strings.TrimSpace(strings.Join(record[1:], ", "))
-		countyName, stateName := splitCountyState(name)
+		stateName := stateFIPSName[stateCode]
 
 		codes = append(codes, entity.FIPSCode{
-			StateCode:  fips[:2],
-			CountyCode: fips[2:],
+			StateCode:  stateCode,
+			CountyCode: countyCode,
 			StateName:  stateName,
 			CountyName: countyName,
 			UpdatedAt:  now,
@@ -100,13 +100,23 @@ func parseFIPSCSV(r io.Reader) ([]entity.FIPSCode, error) {
 	return codes, nil
 }
 
-// splitCountyState splits "Autauga County, Alabama" into ("Autauga County", "Alabama").
-func splitCountyState(name string) (county, state string) {
-	idx := strings.LastIndex(name, ", ")
-	if idx == -1 {
-		return name, ""
-	}
-	return strings.TrimSpace(name[:idx]), strings.TrimSpace(name[idx+2:])
+// stateFIPSName maps 2-digit state FIPS codes to state names.
+var stateFIPSName = map[string]string{
+	"01": "Alabama", "02": "Alaska", "04": "Arizona", "05": "Arkansas",
+	"06": "California", "08": "Colorado", "09": "Connecticut", "10": "Delaware",
+	"11": "District of Columbia", "12": "Florida", "13": "Georgia", "15": "Hawaii",
+	"16": "Idaho", "17": "Illinois", "18": "Indiana", "19": "Iowa",
+	"20": "Kansas", "21": "Kentucky", "22": "Louisiana", "23": "Maine",
+	"24": "Maryland", "25": "Massachusetts", "26": "Michigan", "27": "Minnesota",
+	"28": "Mississippi", "29": "Missouri", "30": "Montana", "31": "Nebraska",
+	"32": "Nevada", "33": "New Hampshire", "34": "New Jersey", "35": "New Mexico",
+	"36": "New York", "37": "North Carolina", "38": "North Dakota", "39": "Ohio",
+	"40": "Oklahoma", "41": "Oregon", "42": "Pennsylvania", "44": "Rhode Island",
+	"45": "South Carolina", "46": "South Dakota", "47": "Tennessee", "48": "Texas",
+	"49": "Utah", "50": "Vermont", "51": "Virginia", "53": "Washington",
+	"54": "West Virginia", "55": "Wisconsin", "56": "Wyoming",
+	"60": "American Samoa", "66": "Guam", "69": "Northern Mariana Islands",
+	"72": "Puerto Rico", "78": "U.S. Virgin Islands",
 }
 
 // FetchEventCodes returns the hardcoded list of SAME event codes.
