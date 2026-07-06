@@ -50,6 +50,12 @@ function AppInner() {
       <CssBaseline />
       <AppBar position="static">
         <Toolbar variant="dense">
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="SAME → Mesh"
+            sx={{ height: 40, mr: 1.5, objectFit: 'contain' }}
+          />
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             SAME → Mesh
           </Typography>
