@@ -12,7 +12,8 @@ Decodes SAME/EAS weather alerts from an RTL-SDR dongle and publishes plain-text 
 - **Configurable filters** — select states, counties, and event types to act on
 - **SDR configuration** — set device path and NOAA Weather Radio frequency via the UI
 - **Reference data** — FIPS county codes and SAME event codes refreshable from NOAA/Census
-- **MQTT publishing** — Phase 2; publishes plain-text alerts (e.g. `[TOR] TORNADO WARNING - Fulton County GA - Until 14:30 (KFFC/NWS)`) to a configurable topic
+- **MQTT publishing** — publishes plain-text alerts (e.g. `[TOR] TORNADO WARNING - Fulton County GA - Until 14:30 (KFFC/NWS)`) to a configurable MQTT topic
+- **MeshCore bridge** — optional `meshcore-mqtt` sidecar forwards published alerts from Mosquitto out to a MeshCore mesh node over TCP
 
 ---
 
@@ -55,10 +56,13 @@ All configuration is via environment variables. Copy `.env.example` to `.env` fo
 | `DB_SSL_MODE` | `disable` | Postgres SSL mode |
 | `SDR_DEVICE_PATH` | `/dev/bus/usb` | RTL-SDR USB device path |
 | `SDR_FREQUENCY` | `162550000` | NOAA Weather Radio frequency in Hz |
-| `MQTT_ENABLED` | `false` | Set `true` to enable MQTT publishing (Phase 2) |
+| `MQTT_ENABLED` | `false` | Set `true` to enable MQTT publishing |
 | `MQTT_HOST` | `localhost` | MQTT broker host |
 | `MQTT_PORT` | `1883` | MQTT broker port |
 | `MQTT_PUBLISH_TOPIC` | `same/alerts` | MQTT topic for alert messages |
+| `MESHCORE_ADDRESS` | — | IP of the MeshCore node (used by `meshcore-mqtt` sidecar) |
+| `MESHCORE_PORT` | `5000` | TCP port of the MeshCore node |
+| `MESHCORE_CHANNEL_INDEX` | `0` | Channel index on the MeshCore node to publish to |
 
 ---
 
@@ -72,6 +76,34 @@ All configuration is via environment variables. Copy `.env.example` to `.env` fo
    ```
 3. Set `SDR_DEVICE_PATH` and `SDR_FREQUENCY` via the **SDR Config** tab in the UI (or in `.env`).
 4. NOAA Weather Radio frequencies: 162.400 / 162.425 / 162.450 / 162.475 / 162.500 / 162.525 / **162.550 MHz** (most common).
+
+---
+
+## MeshCore Integration
+
+The optional `meshcore-mqtt` sidecar bridges Mosquitto to a [MeshCore](https://meshcore.co.uk/) node over TCP. When enabled, any alert published to the `MQTT_PUBLISH_TOPIC` topic is forwarded to the mesh.
+
+```bash
+# Start all services including the MeshCore bridge
+docker compose --profile meshcore up -d
+
+# Or set in .env and use plain compose up
+COMPOSE_PROFILES=meshcore docker compose up -d
+```
+
+**To test end-to-end locally:**
+
+1. Set `MQTT_ENABLED=true` in `.env`.
+2. Set `MESHCORE_ADDRESS` to your MeshCore node's IP.
+3. Start with `--profile meshcore`.
+4. In the UI, go to **MQTT Config**, verify settings, and click **Send Test Message**.
+5. The message `[TEST] SAME → Mesh connectivity check` should appear on your MeshCore node.
+
+To subscribe to raw published messages without a MeshCore node (local smoke test only):
+
+```bash
+docker exec <project>-mosquitto-1 mosquitto_sub -t same/alerts
+```
 
 ---
 
