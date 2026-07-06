@@ -107,7 +107,7 @@ func main() {
 	if err := sdrAdapter.Start(ctx, alertCh); err != nil {
 		slog.Warn("SDR pipeline could not start — alerts will not be decoded", "error", err)
 	} else {
-		defer sdrAdapter.Stop()
+		defer func() { sdrAdapter.Stop() }()
 		go func() {
 			for alert := range alertCh {
 				saved, err := alertSvc.Handle(context.Background(), alert)
@@ -120,6 +120,16 @@ func main() {
 				}
 			}
 		}()
+	}
+
+	restartSDR := func(cfg entity.SDRDeviceConfig) error {
+		sdrAdapter.Stop()
+		newAdapter := sdr.New(cfg.DevicePath, cfg.Frequency)
+		if err := newAdapter.Start(ctx, alertCh); err != nil {
+			return fmt.Errorf("restarting SDR pipeline: %w", err)
+		}
+		sdrAdapter = newAdapter
+		return nil
 	}
 
 	reconnectMQTT := func(cfg entity.MQTTConfig) error {
@@ -142,7 +152,9 @@ func main() {
 		return nil
 	}
 
-	h := httphandler.New(alertSvc, filterSvc, refDataSvc, broker).WithMQTT(mqttPub, reconnectMQTT)
+	h := httphandler.New(alertSvc, filterSvc, refDataSvc, broker).
+		WithMQTT(mqttPub, reconnectMQTT).
+		WithSDR(restartSDR)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)

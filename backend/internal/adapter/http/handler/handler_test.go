@@ -498,6 +498,31 @@ func TestHandler_UpdateSDRConfig_UpdateError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 }
 
+func TestHandler_UpdateSDRConfig_RestartCalled(t *testing.T) {
+	h, _, _, _, _ := newTestHandler()
+	var restarted entity.SDRDeviceConfig
+	h = h.WithSDR(func(cfg entity.SDRDeviceConfig) error {
+		restarted = cfg
+		return nil
+	})
+	rr := do(t, h, http.MethodPut, "/api/sdr-config", entity.SDRDeviceConfig{DevicePath: "/dev/rtl0", Frequency: 162550000})
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "/dev/rtl0", restarted.DevicePath)
+	assert.Equal(t, int64(162550000), restarted.Frequency)
+}
+
+func TestHandler_UpdateSDRConfig_RestartError(t *testing.T) {
+	h, _, _, _, _ := newTestHandler()
+	h = h.WithSDR(func(_ entity.SDRDeviceConfig) error {
+		return errors.New("rtl_fm not found")
+	})
+	rr := do(t, h, http.MethodPut, "/api/sdr-config", entity.SDRDeviceConfig{DevicePath: "/dev/rtl0", Frequency: 162550000})
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var got map[string]string
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&got))
+	assert.Contains(t, got["warning"], "SDR pipeline restart failed")
+}
+
 func TestHandler_GetMQTTConfig_Error(t *testing.T) {
 	h := newErrHandler()
 	rr := do(t, h, http.MethodGet, "/api/mqtt-config", nil)
