@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+make fmt
+make lint
