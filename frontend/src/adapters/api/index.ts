@@ -1,5 +1,12 @@
 import { get, post, put } from './client'
-import type { SAMEAlert, EventCode, FIPSCode, AlertFilter, SDRDeviceConfig } from '../../domain/types'
+import type {
+  SAMEAlert,
+  EventCode,
+  FIPSCode,
+  AlertFilter,
+  SDRDeviceConfig,
+  MQTTConfig,
+} from '../../domain/types'
 
 export const api = {
   // Alerts
@@ -20,4 +27,9 @@ export const api = {
   refreshFIPS: () => post<{ updated: number }>('/api/reference/fips/refresh'),
   refreshEventCodes: () => post<{ updated: number }>('/api/reference/event-codes/refresh'),
   fipsCount: () => get<{ count: number }>('/api/reference/fips/count'),
+
+  // MQTT config
+  getMQTTConfig: () => get<MQTTConfig>('/api/mqtt-config'),
+  updateMQTTConfig: (cfg: Partial<MQTTConfig>) => put<MQTTConfig>('/api/mqtt-config', cfg),
+  testMQTTPublish: () => post<{ ok: boolean }>('/api/mqtt-config/test'),
 }

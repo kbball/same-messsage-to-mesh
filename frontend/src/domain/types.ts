@@ -40,6 +40,14 @@ export interface SDRDeviceConfig {
   updated_at: string
 }
 
+export interface MQTTConfig {
+  enabled: boolean
+  host: string
+  port: number
+  publish_topic: string
+  updated_at: string
+}
+
 export const NOAA_FREQUENCIES = [
   { label: '162.400 MHz', value: 162400000 },
   { label: '162.425 MHz', value: 162425000 },

@@ -14,7 +14,7 @@ import (
 // AlertService receives decoded SAME alerts, applies filter logic, persists matches,
 // and optionally publishes them.
 type AlertService struct {
-	alertRepo portrepo.AlertRepository
+	alertRepo  portrepo.AlertRepository
 	filterRepo portrepo.FilterRepository
 	fipsRepo   portrepo.FIPSRepository
 	ecRepo     portrepo.EventCodeRepository
@@ -37,6 +37,11 @@ func NewAlertService(
 	}
 }
 
+// SetPublisher swaps the publisher at runtime (used when MQTT config is updated via UI).
+func (s *AlertService) SetPublisher(pub portsvc.AlertPublisher) {
+	s.publisher = pub
+}
+
 // Handle processes a decoded SAME alert: checks the filter, persists it, and publishes if enabled.
 func (s *AlertService) Handle(ctx context.Context, alert entity.SAMEAlert) (entity.SAMEAlert, error) {
 	filter, err := s.filterRepo.Get(ctx)
@@ -45,7 +50,7 @@ func (s *AlertService) Handle(ctx context.Context, alert entity.SAMEAlert) (enti
 	}
 
 	if !s.matchesFilter(alert, filter) {
-		slog.Info("alert filtered out",
+		slog.Debug("alert filtered out",
 			"event_code", alert.EventCode,
 			"fips_codes", alert.FIPSCodes,
 		)
@@ -60,10 +65,13 @@ func (s *AlertService) Handle(ctx context.Context, alert entity.SAMEAlert) (enti
 	if s.publisher != nil {
 		msg := s.formatMessage(ctx, saved)
 		if err := s.publisher.Publish(ctx, saved, msg); err != nil {
-			slog.Warn("failed to publish alert", "id", saved.ID, "error", err)
+			slog.Warn("failed to publish alert to MQTT", "id", saved.ID, "error", err)
 		} else {
-			_ = s.alertRepo.MarkPublished(ctx, saved.ID)
-			saved.Published = true
+			if err := s.alertRepo.MarkPublished(ctx, saved.ID); err != nil {
+				slog.Error("failed to mark alert as published", "id", saved.ID, "error", err)
+			} else {
+				saved.Published = true
+			}
 		}
 	}
 

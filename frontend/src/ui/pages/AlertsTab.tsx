@@ -68,7 +68,9 @@ export default function AlertsTab() {
                     <Chip
                       label={a.event_code}
                       size="small"
-                      color={a.event_code === 'RWT' || a.event_code === 'RMT' ? 'default' : 'warning'}
+                      color={
+                        a.event_code === 'RWT' || a.event_code === 'RMT' ? 'default' : 'warning'
+                      }
                     />
                   </TableCell>
                   <TableCell>{a.originator}</TableCell>

@@ -5,14 +5,17 @@ import (
 
 	"github.com/kbball/same-message-to-mesh/backend/internal/adapter/sse"
 	"github.com/kbball/same-message-to-mesh/backend/internal/application/service"
+	"github.com/kbball/same-message-to-mesh/backend/internal/domain/entity"
 )
 
 // Handler holds all application services and registers HTTP routes.
 type Handler struct {
-	alerts    *service.AlertService
-	filters   *service.FilterService
-	refData   *service.ReferenceDataService
-	stream    sse.Publisher
+	alerts        *service.AlertService
+	filters       *service.FilterService
+	refData       *service.ReferenceDataService
+	stream        sse.Publisher
+	mqttPublisher publisherGetter
+	reconnectMQTT func(entity.MQTTConfig) error
 }
 
 func New(
@@ -29,6 +32,13 @@ func New(
 	}
 }
 
+// WithMQTT wires a live publisher and a reconnect callback into the handler.
+func (h *Handler) WithMQTT(pub publisherGetter, reconnect func(entity.MQTTConfig) error) *Handler {
+	h.mqttPublisher = pub
+	h.reconnectMQTT = reconnect
+	return h
+}
+
 // Register wires all API routes onto mux.
 func (h *Handler) Register(mux *http.ServeMux) {
 	// Alerts
@@ -41,6 +51,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	// SDR config
 	mux.HandleFunc("GET /api/sdr-config", h.getSDRConfig)
 	mux.HandleFunc("PUT /api/sdr-config", h.updateSDRConfig)
+
+	// MQTT config
+	mux.HandleFunc("GET /api/mqtt-config", h.getMQTTConfig)
+	mux.HandleFunc("PUT /api/mqtt-config", h.updateMQTTConfig)
+	mux.HandleFunc("POST /api/mqtt-config/test", h.testMQTTPublish)
 
 	// Reference data
 	mux.HandleFunc("GET /api/reference/states", h.listStates)

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +8,14 @@ import (
 )
 
 func TestLoad_Defaults(t *testing.T) {
+	// Clear any vars that .env may export so defaults are exercised.
 	t.Setenv("DB_PASSWORD", "secret")
+	t.Setenv("DB_PORT", "")
+	t.Setenv("SERVER_PORT", "")
+	t.Setenv("LOG_LEVEL", "")
+	t.Setenv("DB_NAME", "")
+	t.Setenv("SDR_FREQUENCY", "")
+	t.Setenv("MQTT_ENABLED", "")
 	cfg, err := Load()
 	require.NoError(t, err)
 	assert.Equal(t, 8080, cfg.ServerPort)
@@ -21,7 +27,7 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_MissingPassword(t *testing.T) {
-	os.Unsetenv("DB_PASSWORD")
+	t.Setenv("DB_PASSWORD", "")
 	_, err := Load()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB_PASSWORD")

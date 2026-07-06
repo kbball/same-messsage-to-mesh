@@ -40,14 +40,14 @@ func TestParseSAME(t *testing.T) {
 			wantCall:  "KFFC/NWS",
 		},
 		{
-			name:     "too few fields",
-			raw:      "ZCZC-WXR-",
-			wantErr:  true,
+			name:    "too few fields",
+			raw:     "ZCZC-WXR-",
+			wantErr: true,
 		},
 		{
-			name:     "no FIPS codes",
-			raw:      "ZCZC-WXR-TOR+0030-1820218-KRAH/NWS-",
-			wantErr:  true,
+			name:    "no FIPS codes",
+			raw:     "ZCZC-WXR-TOR+0030-1820218-KRAH/NWS-",
+			wantErr: true,
 		},
 	}
 
@@ -69,4 +69,3 @@ func TestParseSAME(t *testing.T) {
 		})
 	}
 }
-

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/kbball/same-message-to-mesh/backend/internal/domain/entity"
@@ -10,6 +11,7 @@ import (
 func (h *Handler) getFilter(w http.ResponseWriter, r *http.Request) {
 	filter, err := h.filters.GetFilter(r.Context())
 	if err != nil {
+		slog.Error("failed to get filter config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to get filter config")
 		return
 	}
@@ -23,11 +25,13 @@ func (h *Handler) updateFilter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.filters.UpdateFilter(r.Context(), filter); err != nil {
+		slog.Error("failed to update filter config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to update filter config")
 		return
 	}
 	updated, err := h.filters.GetFilter(r.Context())
 	if err != nil {
+		slog.Error("failed to read updated filter", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to read updated filter")
 		return
 	}
@@ -37,6 +41,7 @@ func (h *Handler) updateFilter(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getSDRConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.filters.GetSDRConfig(r.Context())
 	if err != nil {
+		slog.Error("failed to get SDR config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to get SDR config")
 		return
 	}
@@ -58,11 +63,13 @@ func (h *Handler) updateSDRConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.filters.UpdateSDRConfig(r.Context(), cfg); err != nil {
+		slog.Error("failed to update SDR config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to update SDR config")
 		return
 	}
 	updated, err := h.filters.GetSDRConfig(r.Context())
 	if err != nil {
+		slog.Error("failed to read updated SDR config", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to read updated SDR config")
 		return
 	}
