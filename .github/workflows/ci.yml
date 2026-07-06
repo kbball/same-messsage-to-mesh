@@ -4,51 +4,69 @@ on:
   pull_request:
     branches: [main, staging]
 
-jobs:
-  backend:
-    name: Backend lint + test
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: same_mesh_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: backend/go.sum
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - name: Lint
-        run: cd backend && golangci-lint run ./...
-      - name: Test
-        run: cd backend && go test ./...
-        env:
-          DB_TEST_DSN: host=localhost port=5432 dbname=same_mesh_test user=postgres password=postgres sslmode=disable
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-  frontend:
-    name: Frontend lint + test
+jobs:
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: cd frontend && npm ci
-      - name: Lint
-        run: cd frontend && npm run lint
-      - name: Test
-        run: cd frontend && npm test
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Backend tests
+        run: go test ./...
+        working-directory: backend
+
+      - name: Frontend tests
+        run: npm test
+        working-directory: frontend
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Backend lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: backend
+
+      - name: Frontend lint
+        run: npm run lint
+        working-directory: frontend
