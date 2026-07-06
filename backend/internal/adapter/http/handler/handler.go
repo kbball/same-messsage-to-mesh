@@ -16,6 +16,7 @@ type Handler struct {
 	stream        sse.Publisher
 	mqttPublisher publisherGetter
 	reconnectMQTT func(entity.MQTTConfig) error
+	restartSDR    func(entity.SDRDeviceConfig) error
 }
 
 func New(
@@ -36,6 +37,12 @@ func New(
 func (h *Handler) WithMQTT(pub publisherGetter, reconnect func(entity.MQTTConfig) error) *Handler {
 	h.mqttPublisher = pub
 	h.reconnectMQTT = reconnect
+	return h
+}
+
+// WithSDR wires a restart callback that is called after SDR config is saved.
+func (h *Handler) WithSDR(restart func(entity.SDRDeviceConfig) error) *Handler {
+	h.restartSDR = restart
 	return h
 }
 

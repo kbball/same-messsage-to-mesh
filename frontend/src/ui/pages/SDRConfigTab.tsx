@@ -45,7 +45,7 @@ export default function SDRConfigTab() {
       setConfig(updated)
       setMessage({
         type: 'success',
-        text: 'SDR config saved. Restart the server to apply changes.',
+        text: 'SDR config saved. Pipeline restarted with new settings.',
       })
     } catch (e) {
       setMessage({ type: 'error', text: (e as Error).message })
@@ -62,8 +62,8 @@ export default function SDRConfigTab() {
         SDR Configuration
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Configure the RTL-SDR device path and NOAA Weather Radio frequency. Changes take effect
-        after the server restarts.
+        Configure the RTL-SDR device path and NOAA Weather Radio frequency. Saving restarts the
+        SDR pipeline immediately.
       </Typography>
 
       {message && (

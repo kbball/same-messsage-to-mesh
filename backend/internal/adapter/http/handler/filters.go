@@ -73,5 +73,14 @@ func (h *Handler) updateSDRConfig(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to read updated SDR config")
 		return
 	}
+	if h.restartSDR != nil {
+		if err := h.restartSDR(updated); err != nil {
+			slog.Warn("SDR pipeline restart failed after config update", "error", err)
+			writeJSON(w, http.StatusOK, map[string]string{
+				"warning": "config saved but SDR pipeline restart failed",
+			})
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, updated)
 }
