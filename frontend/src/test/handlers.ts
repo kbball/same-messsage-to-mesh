@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { SAMEAlert, AlertFilter, SDRDeviceConfig, EventCode, FIPSCode } from '../domain/types'
+import type { SAMEAlert, AlertFilter, SDRDeviceConfig, EventCode, FIPSCode, MQTTConfig } from '../domain/types'
 
 const mockFilter: AlertFilter = {
   state_codes: [],
@@ -11,6 +11,14 @@ const mockFilter: AlertFilter = {
 const mockSDRConfig: SDRDeviceConfig = {
   device_path: '/dev/bus/usb',
   frequency: 162550000,
+  updated_at: new Date().toISOString(),
+}
+
+const mockMQTTConfig: MQTTConfig = {
+  enabled: false,
+  host: 'localhost',
+  port: 1883,
+  publish_topic: 'same/alerts',
   updated_at: new Date().toISOString(),
 }
 
@@ -50,4 +58,7 @@ export const handlers = [
   http.post('/api/reference/fips/refresh', () => HttpResponse.json({ updated: 3235 })),
   http.post('/api/reference/event-codes/refresh', () => HttpResponse.json({ updated: 62 })),
   http.get('/api/reference/fips/count', () => HttpResponse.json({ count: 3235 })),
+  http.get('/api/mqtt-config', () => HttpResponse.json(mockMQTTConfig)),
+  http.put('/api/mqtt-config', () => HttpResponse.json({ ...mockMQTTConfig, enabled: true })),
+  http.post('/api/mqtt-config/test', () => HttpResponse.json({ ok: true })),
 ]

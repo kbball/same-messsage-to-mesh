@@ -17,3 +17,12 @@ type SDRDeviceConfig struct {
 	Frequency  int64     `json:"frequency"` // Hz (e.g. 162550000 for 162.550 MHz)
 	UpdatedAt  time.Time `json:"updated_at"`
 }
+
+// MQTTConfig is the persisted MQTT broker configuration.
+type MQTTConfig struct {
+	Enabled      bool      `json:"enabled"`
+	Host         string    `json:"host"`
+	Port         int       `json:"port"`
+	PublishTopic string    `json:"publish_topic"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}

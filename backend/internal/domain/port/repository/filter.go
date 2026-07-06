@@ -15,3 +15,8 @@ type SDRConfigRepository interface {
 	Get(ctx context.Context) (entity.SDRDeviceConfig, error)
 	Update(ctx context.Context, cfg entity.SDRDeviceConfig) error
 }
+
+type MQTTConfigRepository interface {
+	Get(ctx context.Context) (entity.MQTTConfig, error)
+	Update(ctx context.Context, cfg entity.MQTTConfig) error
+}

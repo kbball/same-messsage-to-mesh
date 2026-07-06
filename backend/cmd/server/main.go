@@ -17,6 +17,7 @@ import (
 	_ "github.com/lib/pq"
 
 	httphandler "github.com/kbball/same-message-to-mesh/backend/internal/adapter/http/handler"
+	mqttadapter "github.com/kbball/same-message-to-mesh/backend/internal/adapter/mqtt"
 	"github.com/kbball/same-message-to-mesh/backend/internal/adapter/noaa"
 	"github.com/kbball/same-message-to-mesh/backend/internal/adapter/repository"
 	"github.com/kbball/same-message-to-mesh/backend/internal/adapter/sdr"
@@ -57,6 +58,7 @@ func main() {
 	fipsRepo := repository.NewFIPSRepo(db)
 	filterRepo := repository.NewFilterRepo(db)
 	sdrCfgRepo := repository.NewSDRConfigRepo(db)
+	mqttCfgRepo := repository.NewMQTTConfigRepo(db)
 
 	// SSE broker
 	broker := sseadapter.NewBroker()
@@ -64,9 +66,23 @@ func main() {
 	// NOAA fetcher
 	noaaFetcher := noaa.New()
 
+	// MQTT publisher — start if enabled in DB config
+	var mqttPub *mqttadapter.Publisher
+	mqttCfg, err := mqttCfgRepo.Get(context.Background())
+	if err != nil {
+		slog.Warn("could not load MQTT config from DB", "error", err)
+	} else if mqttCfg.Enabled {
+		if p, err := mqttadapter.New(mqttCfg); err != nil {
+			slog.Warn("MQTT publisher could not start", "error", err)
+		} else {
+			mqttPub = p
+			defer mqttPub.Close()
+		}
+	}
+
 	// Application services
-	alertSvc := service.NewAlertService(alertRepo, filterRepo, fipsRepo, ecRepo, nil)
-	filterSvc := service.NewFilterService(filterRepo, sdrCfgRepo)
+	alertSvc := service.NewAlertService(alertRepo, filterRepo, fipsRepo, ecRepo, mqttPub)
+	filterSvc := service.NewFilterService(filterRepo, sdrCfgRepo, mqttCfgRepo)
 	refDataSvc := service.NewReferenceDataService(fipsRepo, ecRepo, noaaFetcher)
 
 	// SDR pipeline — load persisted config from DB
@@ -106,7 +122,27 @@ func main() {
 		}()
 	}
 
-	h := httphandler.New(alertSvc, filterSvc, refDataSvc, broker)
+	reconnectMQTT := func(cfg entity.MQTTConfig) error {
+		if mqttPub != nil {
+			mqttPub.Close()
+		}
+		if !cfg.Enabled {
+			mqttPub = nil
+			alertSvc.SetPublisher(nil)
+			return nil
+		}
+		p, err := mqttadapter.New(cfg)
+		if err != nil {
+			mqttPub = nil
+			alertSvc.SetPublisher(nil)
+			return err
+		}
+		mqttPub = p
+		alertSvc.SetPublisher(p)
+		return nil
+	}
+
+	h := httphandler.New(alertSvc, filterSvc, refDataSvc, broker).WithMQTT(mqttPub, reconnectMQTT)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)

@@ -9,17 +9,20 @@ import (
 )
 
 type FilterService struct {
-	filterRepo    portrepo.FilterRepository
-	sdrConfigRepo portrepo.SDRConfigRepository
+	filterRepo     portrepo.FilterRepository
+	sdrConfigRepo  portrepo.SDRConfigRepository
+	mqttConfigRepo portrepo.MQTTConfigRepository
 }
 
 func NewFilterService(
 	filterRepo portrepo.FilterRepository,
 	sdrConfigRepo portrepo.SDRConfigRepository,
+	mqttConfigRepo portrepo.MQTTConfigRepository,
 ) *FilterService {
 	return &FilterService{
-		filterRepo:    filterRepo,
-		sdrConfigRepo: sdrConfigRepo,
+		filterRepo:     filterRepo,
+		sdrConfigRepo:  sdrConfigRepo,
+		mqttConfigRepo: mqttConfigRepo,
 	}
 }
 
@@ -41,6 +44,17 @@ func (s *FilterService) GetSDRConfig(ctx context.Context) (entity.SDRDeviceConfi
 func (s *FilterService) UpdateSDRConfig(ctx context.Context, cfg entity.SDRDeviceConfig) error {
 	if err := s.sdrConfigRepo.Update(ctx, cfg); err != nil {
 		return fmt.Errorf("updating SDR config: %w", err)
+	}
+	return nil
+}
+
+func (s *FilterService) GetMQTTConfig(ctx context.Context) (entity.MQTTConfig, error) {
+	return s.mqttConfigRepo.Get(ctx)
+}
+
+func (s *FilterService) UpdateMQTTConfig(ctx context.Context, cfg entity.MQTTConfig) error {
+	if err := s.mqttConfigRepo.Update(ctx, cfg); err != nil {
+		return fmt.Errorf("updating MQTT config: %w", err)
 	}
 	return nil
 }

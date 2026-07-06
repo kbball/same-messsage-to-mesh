@@ -37,6 +37,11 @@ func NewAlertService(
 	}
 }
 
+// SetPublisher swaps the publisher at runtime (used when MQTT config is updated via UI).
+func (s *AlertService) SetPublisher(pub portsvc.AlertPublisher) {
+	s.publisher = pub
+}
+
 // Handle processes a decoded SAME alert: checks the filter, persists it, and publishes if enabled.
 func (s *AlertService) Handle(ctx context.Context, alert entity.SAMEAlert) (entity.SAMEAlert, error) {
 	filter, err := s.filterRepo.Get(ctx)
