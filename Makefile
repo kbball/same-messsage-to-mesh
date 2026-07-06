@@ -6,8 +6,8 @@ MIGRATIONS_DIR=internal/adapter/repository/migrations
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev db-up db-down build build-backend build-frontend \
-        test test-backend test-frontend \
+.PHONY: help dev db-up db-down meshcore-up meshcore-down build build-backend build-frontend \
+        test test-backend test-frontend test-integration \
         coverage coverage-backend coverage-frontend \
         lint lint-backend lint-frontend \
         fmt fmt-backend fmt-frontend \
@@ -20,11 +20,14 @@ help:
 	@echo "Dev"
 	@echo "  db-up               Start Postgres + Mosquitto in Docker (detached)"
 	@echo "  db-down             Stop Docker services"
+	@echo "  meshcore-up         Start Postgres + Mosquitto + MeshCore bridge (--profile meshcore)"
+	@echo "  meshcore-down       Stop all services including MeshCore bridge"
 	@echo "  dev                 Start backend + frontend for local development"
 	@echo "  build               Build backend binary and frontend bundle"
 	@echo ""
 	@echo "Testing"
-	@echo "  test                Run all tests"
+	@echo "  test                Run all tests (unit)"
+	@echo "  test-integration    Run integration tests against a live Postgres DB"
 	@echo "  coverage            Run all tests with coverage reports"
 	@echo ""
 	@echo "Quality"
@@ -46,10 +49,16 @@ help:
 # ── Dev ──────────────────────────────────────────────────────────────────────
 
 db-up:
-	docker-compose up -d db mosquitto
+	docker compose up -d db mosquitto
 
 db-down:
-	docker-compose down
+	docker compose down
+
+meshcore-up:
+	docker compose --profile meshcore up -d
+
+meshcore-down:
+	docker compose --profile meshcore down
 
 dev: db-up
 	@trap 'kill 0' SIGINT; \
