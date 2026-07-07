@@ -6,7 +6,8 @@ MIGRATIONS_DIR=internal/adapter/repository/migrations
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev db-up db-down meshcore-up meshcore-down build build-backend build-frontend \
+.PHONY: help dev db-up db-down meshcore-up meshcore-down stack-up stack-down \
+        build build-backend build-frontend \
         test test-backend test-frontend test-integration \
         coverage coverage-backend coverage-frontend \
         lint lint-backend lint-frontend \
@@ -22,7 +23,10 @@ help:
 	@echo "  db-down             Stop Docker services"
 	@echo "  meshcore-up         Start Postgres + Mosquitto + MeshCore bridge (--profile meshcore)"
 	@echo "  meshcore-down       Stop all services including MeshCore bridge"
+	@echo "  stack-up            Build image and start full stack in Docker (db + mosquitto + app)"
+	@echo "  stack-down          Stop full stack"
 	@echo "  dev                 Start backend + frontend for local development"
+	@echo "  docker-build        Build the Docker image locally (uses Buildx --load)"
 	@echo "  build               Build backend binary and frontend bundle"
 	@echo ""
 	@echo "Testing"
@@ -44,7 +48,6 @@ help:
 	@echo "  install             Install all tools, hooks, and frontend deps"
 	@echo "  install-tools       Install golangci-lint and goose CLI"
 	@echo "  install-hooks       Install pre-commit hook (make fmt + make lint)"
-	@echo "  docker-build        Build the Docker image"
 
 # ── Dev ──────────────────────────────────────────────────────────────────────
 
@@ -59,6 +62,15 @@ meshcore-up:
 
 meshcore-down:
 	docker compose --profile meshcore down
+
+docker-build:
+	docker buildx build --load -t same-message-to-mesh:local .
+
+stack-up: docker-build
+	docker compose up -d
+
+stack-down:
+	docker compose down
 
 dev: db-up
 	@trap 'kill 0' SIGINT; \
@@ -147,6 +159,3 @@ install-hooks:
 	cp scripts/pre-commit .git/hooks/pre-commit
 	chmod +x .git/hooks/pre-commit
 	@echo "Pre-commit hook installed."
-
-docker-build:
-	docker build -t same-message-to-mesh .
